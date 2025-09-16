@@ -1,0 +1,26 @@
+{
+    "id": "508E73D1",
+    "path": "~/Archivos_R/scripts/analisis_supervivencia.R",
+    "project_path": "scripts/analisis_supervivencia.R",
+    "type": "r_source",
+    "hash": "1894235622",
+    "contents": "",
+    "dirty": false,
+    "created": 1758038890761.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "47,37",
+        "scrollLine": "37"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1758038902,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1758038902193,
+    "read_only": false,
+    "read_only_alternatives": []
+}

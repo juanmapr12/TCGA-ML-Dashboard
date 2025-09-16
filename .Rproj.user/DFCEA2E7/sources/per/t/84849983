@@ -1,0 +1,26 @@
+{
+    "id": "84849983",
+    "path": "~/Archivos_R/scripts/clustering.R",
+    "project_path": "scripts/clustering.R",
+    "type": "r_source",
+    "hash": "182449457",
+    "contents": "",
+    "dirty": false,
+    "created": 1757968923079.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "86,2",
+        "scrollLine": "54"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1758034787,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1758034787125,
+    "read_only": false,
+    "read_only_alternatives": []
+}
