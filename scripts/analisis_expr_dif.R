@@ -29,55 +29,74 @@ saca_pareadas <- function(muestras_totales){
 }
 
 
-analisis_expr_dif <- function(muestras_escogidas, df){
+analisis_expr_dif <- function(muestras_escogidas, comparacion, df_expresiones_mirnas, df_completo){
   
   grupo <- vector(mode="character")
   
-  if (muestras_escogidas == "Totales"){
-    muestras <- colnames(df)
-  }else if (muestras_escogidas == "Pareadas"){
-    muestras <- saca_pareadas(colnames(df))
-  }
-  
-  for (i in 1:length(muestras)){
-    tipo_muestra <- sapply(strsplit(muestras[i], "-"),
-                           function(x) x[4])
-    if (tipo_muestra == "01"){
-      grupo <- c(grupo, "enfermo")
-    }else{
-      grupo <- c(grupo, "sano")
+  if(comparacion == "Sano vs enfermo"){
+    
+    if (muestras_escogidas == "Totales"){
+      muestras <- colnames(df_expresiones_mirnas)
+    }else if (muestras_escogidas == "Pareadas"){
+      muestras <- saca_pareadas(colnames(df_expresiones_mirnas))
     }
+    
+    for (i in 1:length(muestras)){
+      tipo_muestra <- sapply(strsplit(muestras[i], "-"),
+                             function(x) x[4])
+      if (tipo_muestra == "01"){
+        grupo <- c(grupo, "enfermo")
+      }else{
+        grupo <- c(grupo, "sano")
+      }
+    }
+    
+    grupo <- factor(grupo)
+    grupo <- relevel(grupo, ref = "enfermo")
+    design <- model.matrix(~ grupo)
+    
+    # Simplemente expresamos los CPM en log2 para poder aplicarles limma
+    log_expr <- log2(df_expresiones_mirnas[,muestras] + 1)
+    
+  }else if(comparacion == "Vivo vs muerto"){
+    
+    muestras <- rownames(df_completo)
+    lista_mirnas <- rownames(df_expresiones_mirnas)
+    pacientes <- unique(muestras)
+    df_dea <- df_completo[pacientes,c("vital_status",lista_mirnas)] %>%
+      mutate(across(everything(), as.numeric))
+    
+    grupo <- ifelse(df_dea$vital_status == 2, 
+                    "muerto", "vivo")
+    grupo <- factor(grupo)
+    grupo <- relevel(grupo, ref = "muerto")
+    design <- model.matrix(~ grupo)
+    
+    # Trasponemos para que los mirnas estén en las filas y los pacientes en las columnas
+    df_dea_trasp <- t(df_dea)
+    
+    # Simplemente expresamos los CPM en log2 para poder aplicarles limma
+    log_expr <- log2(df_dea_trasp[!(rownames(df_dea_trasp) %in% "vital_status"),] + 1)
+    
   }
-  
-  grupo <- factor(grupo)
-  grupo <- relevel(grupo, ref = "enfermo")
-  design <- model.matrix(~ grupo)
-  
-  # Simplemente expresamos los CPM en log2 para poder aplicarles limma
-  log_expr <- log2(df[,muestras] + 1)
   
   fit <- lmFit(log_expr, design)
   fit <- eBayes(fit)
-  tt <- topTable(fit, coef = 2, number = Inf)
+  tabla <- topTable(fit, coef = 2, number = Inf)
   
-  return(tt)
+  return(tabla)
 }
 
 
-volcano <- function(tabla_resultados, muestras_escogidas, umbral_logFC, umbral_pvalor_ajustado){
+volcano <- function(tabla_resultados, umbral_logFC, umbral_pvalor_ajustado){
   
-  if (muestras_escogidas == "Totales"){
-    titulo <- "Volcano Plot para el total de muestras"
-  }else if (muestras_escogidas == "Pareadas"){
-    titulo <- "Volcano Plot para el conjunto de muestras pareadas"
-  }
   print(EnhancedVolcano(tabla_resultados,
-                        title = titulo,
+                        title = "Volcano Plot para los parámetros seleccionados",
                         lab = rownames(tabla_resultados),
                         x = 'logFC',
                         y = 'adj.P.Val',
                         FCcutoff = umbral_logFC,
-                        pCutoff = umbral_pvalor_ajustado))
+                        pCutoff = 10^(-(umbral_pvalor_ajustado))))
 }
 
 

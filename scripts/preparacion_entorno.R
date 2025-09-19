@@ -28,8 +28,7 @@ library(org.Hs.eg.db)
 library(enrichplot)
 
 library(pheatmap)
-library(tidymodels)
-library(discrim)  # Para Naive-Bayes
+library(tidymodels)  # Incluye parsnip, recipes, workflows...
 
 
 

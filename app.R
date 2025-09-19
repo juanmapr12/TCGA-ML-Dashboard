@@ -21,7 +21,7 @@ source("scripts/clasificacion_ML.R")
 ui <- dashboardPage(
   
   dashboardHeader(
-    title = "TCGA ML Dashboard",
+    title = "TCGA Dashboard",
     tags$li(class = "dropdown",
             tags$b(textOutput("proyecto_utilizado"), style = "color:white; font-size:17px;"))
   ),
@@ -154,20 +154,20 @@ ui <- dashboardPage(
                       label = "Establezca un porcentaje máximo de pacientes permitidos para las que las distintas expresiones del microARN superen el valor 1 (un valor cercano al 0)",
                       value = 50, min = 0, max = 100, step = 1
                     ),
-                    helpText("Es decir, si se escoge el 50% (valor establecido por defecto) quiere decir que se rechazarán los microARNs cuya expresión en pacientes es inferior a 1 en, al menos, el 50% del total."),
+                    helpText("Es decir, si se escoge el 50% (valor establecido por defecto) quiere decir que se rechazarán los microARN cuya expresión en pacientes es inferior a 1 en, al menos, el 50% del total."),
                     numericInput(
                       inputId = "porcentaje_max_na",
                       label = "Establezca un porcentaje máximo de pacientes a los que se les permite que las expresiones del microARN sean un valor nulo",
                       value = 10, min = 0, max = 20, step = 1
                     ),
-                    helpText("Es decir, si se escoge el 10% (valor establecido por defecto) quiere decir que se rechazarán los microARNs cuyas expresiones o conteos en la totalidad de pacientes superan el 10% de valores nulos. Recomendamos no superar el 20% para evitar introducir sesgos en la posterior imputación de los valores NA."),
+                    helpText("Es decir, si se escoge el 10% (valor establecido por defecto) quiere decir que se rechazarán los microARN cuyas expresiones o conteos en la totalidad de pacientes superan el 10% de valores nulos. Se recomienda no superar el 20% para evitar introducir sesgos en la posterior imputación de los valores NA."),
                     numericInput(
                       inputId = "valor_varianza",
                       label = "Establezca un valor mínimo de la varianza a superar por cada microARN",
                       value = 0.5, min = 0, max = 500, step = 0.1
                     )
                   ),
-                  helpText("Por último, se imputan los valores de expresión nulos que nos han quedado mediante la función impute.knn del proyecto Bioconductor"),
+                  helpText("Por último, se imputan los valores de expresión nulos resultantes mediante la función impute.knn del proyecto Bioconductor"),
                   tags$div(style = "text-align: center;",
                            actionButton(
                              inputId = "preprocesado_mirnas",
@@ -235,20 +235,26 @@ ui <- dashboardPage(
                 box(
                   width = 4, title = "Opciones para el Volcano Plot", status = "primary", solidHeader = TRUE,
                   radioButtons(
+                    inputId = "comparacion",
+                    label = "Seleccione el análisis que le gustaría realizar:",
+                    choices = list("Vivo vs muerto", "Sano vs enfermo")
+                  ),
+                  radioButtons(
                     inputId = "muestras",
-                    label = "¿Qué conjunto de muestras desea utilizar para el análisis?",
+                    label = "¿Qué conjunto de muestras desea utilizar para el análisis? (sólo para Sano vs enfermo)",
                     choices = list("Totales", "Pareadas")
                   ),
                   numericInput(
                     inputId = "logFC",
                     label = "Establezca el valor mínimo del log Fold Change en valor absoluto",
-                    value = 1.5, min = 0, max = 5, step = 0.1
+                    value = 0.5, min = 0, max = 5, step = 0.1
                   ),
                   numericInput(
                     inputId = "p_valor_adj",
-                    label = "Establezca el p-valor ajustado (por defecto 10e-10 ó 1e-9)",
-                    value = 10e-10, min = 0, max = 1, step = 10e-9
+                    label = "Establezca el menos logaritmo en base 10 del p-valor ajustado",
+                    value = 3, min = 0, max = 1000, step = 1
                   ),
+                  helpText("Para ayudarle en los cálculos, x correspondería con un p-valor ajustado de 1e-x"),
                   tags$div(style = "text-align: center;",
                            actionButton(
                              inputId = "analisis_dea",
@@ -260,12 +266,12 @@ ui <- dashboardPage(
                 
                 tabBox(
                   width = 8, side = "left",
-                  tabPanel("Nube de puntos resultante", 
+                  tabPanel("Gráfica resultante", 
                            plotOutput("volcano_plot",
                                       height = "500px",
                                       width = "100%")
                   ),
-                  tabPanel("microARNs que cumplen ambos filtros",
+                  tabPanel("Tabla de microARNs que cumplen ambos filtros",
                           DT::dataTableOutput("mirnas_filtrados")
                   )
                 )
@@ -297,7 +303,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     style = "text-align: center;",
-                    helpText("Se escogerán los microARN cuyo HR quede dentro de los intervalos azules")
+                    helpText("Se escogerán los microARN cuyo HR (Hazard Ratio) quede dentro de los intervalos azules")
                   ),
                   tags$div(style = "text-align: center;",
                            actionButton(
@@ -335,7 +341,7 @@ ui <- dashboardPage(
                     radioButtons(
                       inputId = "mirna_genes",
                       label = "Seleccione los microARN a los que desea obtener sus genes diana:",
-                      choices = list("microARNs tras Expresión diferencial", "microARNs tras Análisis de supervivencia", "La unión de ambos"),
+                      choices = list("Los resultantes tras Expresión diferencial", "Los resultantes tras Análisis de supervivencia", "La unión de ambos"),
                       selected = "La unión de ambos"
                     ),
                     radioButtons(
@@ -405,20 +411,29 @@ ui <- dashboardPage(
                   tabPanel(
                     title = "Parámetros dendrograma",
                     fluidRow(
-                      column(6, 
+                      column(4, 
+                             div(class = "center-col",
+                                 radioButtons(
+                                   inputId = "mirnas_escogidos",
+                                   label = "Seleccione el conjunto de microARN a usar para su agrupación",
+                                   choices = list("microARN resultantes de los análisis de Expresión y Supervivencia", "microARN con más variabilidad (ordenados de mayor a menor según coeficiente de variación)")
+                                 )
+                             )
+                      ),
+                      column(4, 
                              div(class = "center-col",
                                  numericInput(
                                    inputId = "num_mirnas",
-                                   label = "Seleccione los N primeros microARN a visualizar, clasificados según su coeficiente de variación",
+                                   label = "En el segundo caso, seleccione los N primeros microARN que le gustaría visualizar",
                                    value = 50, min = 1, max = 100, step = 1
                                  )
                              )
                       ),
-                      column(6, 
+                      column(4, 
                              div(class = "center-col",
                                  selectInput(
                                    inputId = "jerarquia",
-                                   label = "Seleccione el método de enlace que nos permitirá medir las distancias entre los microARN",
+                                   label = "Seleccione el método de enlace que permitirá medir las distancias entre los microARN",
                                    choices = list("ward.D2", "complete", "average")
                                  )
                              )
@@ -444,7 +459,7 @@ ui <- dashboardPage(
                                  sliderInput(
                                    inputId = "k_clustering",
                                    label = "Establezca el número de clústeres que desea formar",
-                                   value = 4, min = 2, max = 10, step = 1
+                                   value = 4, min = 2, max = 6, step = 1
                                  )
                              )
                       ),
@@ -452,7 +467,7 @@ ui <- dashboardPage(
                              div(class = "center-col",
                                  numericInput(
                                    inputId = "umbral_heatmap",
-                                   label = "Seleccione el valor M que limitará los valores representados a aquellos menores que M y mayores que -M",
+                                   label = "Seleccione el valor que limitará por arriba los valores representados en el mapa",
                                    value = 5, min = 1, max = 15, step = 1
                                  )
                              )
@@ -507,15 +522,15 @@ ui <- dashboardPage(
                     label = "Seleccione el número de subconjuntos en el que desea separar el conjunto de entrenamiento dentro de la validación cruzada",
                     value = 10, min = 0, max = 20, step = 1
                   ),
+                  selectInput(
+                    inputId = "conjunto_datos_a_usar",
+                    label = "Seleccione el conjunto de datos",
+                    choices = list("Variables clínicas", "Variables clínicas + microARN tras Expresión Diferencial", "Variables clínicas + microARN tras Supervivencia", "Variables clínicas + microARN tras Expresión Diferencial y Supervivencia")
+                  ),
                   radioButtons(
                     inputId = "modelo_a_usar",
                     label = "Seleccione el modelo de clasificación a usar",
-                    choices = list("Random Forest", "Regresión logística", "Gradient Boosting", "Naive Bayes", "SVM (Support Vector Machines)")
-                  ),
-                  selectInput(
-                    inputId = "metrica_a_usar",
-                    label = "Seleccione la métrica para la que su modelo debería de obtener el mejor resultado",
-                    choices = list("Accuracy", "Área bajo la curva ROC", "Puntuación Brier")
+                    choices = list("Random Forest", "Regresión logística", "Gradient Boosting", "SVM (Support Vector Machines)")
                   ),
                   tags$div(style = "text-align: center;",
                            actionButton(
@@ -566,7 +581,7 @@ server <- function(input, output, session) {
   })
   
   output$proyecto_utilizado <- renderText(
-    paste0("→ El tipo de cáncer a analizar es el ", proyecto(), ". Si selecciona otro distinto, es necesario ejecutar todos los análisis que se deseen de nuevo.")
+    paste0("→ El tipo de cáncer a analizar es el ", proyecto(), ". Si selecciona otro distinto, es necesario ejecutar todos los análisis que se deseen desde cero.")
   )
   
   
@@ -659,7 +674,7 @@ server <- function(input, output, session) {
     )
   })
   
-  num_mirnas <- reactive({
+  num_mirnas_selecc <- reactive({
     nrow(df_resultado_pre_mirnas())
   })
   
@@ -686,7 +701,7 @@ server <- function(input, output, session) {
     if(nrow(df_resultado_pre_mirnas()) > 0){
       output$estado_pre_mirnas <- renderUI(
         HTML(paste0("<strong>Datos preprocesados correctamente. Hay ", 
-                    num_mirnas(), " microARN.</strong>"))
+                    num_mirnas_selecc(), " microARN.</strong>"))
       )
       closeSweetAlert(session)
       removeNotification(notif_mirnas)
@@ -721,9 +736,9 @@ server <- function(input, output, session) {
   
   output$pre_clinico_seleccion <- renderUI({
     texto_principal <- "Se ha optado por una selección de características manual. En ella se consideran los siguientes aspectos:"
-    elementos <-  c("De todas las columnas clínicas se eliminan las que tengan un porcentaje elevado de valores faltantes.",
+    elementos <-  c("De todas las columnas clínicas se eliminan las que tengan un porcentaje elevado de valores faltantes. Se ha escogido el 60% como umbral inferior.",
                     "Después se filtran aquellas que tengan relación con la que se considera la variable objetivo, el estado vital del paciente. La relación se comprueba a partir de test paramétricos, no paramétricos o de independencia. Si ésta es estadísticamente significativa (p-valor menor que 0.05) se selecciona la columna.",
-                    "Por último, de las columnas resultantes se comprueba si alguna está muy relacionada con otra. Si fuese el caso se procede a eliminar una de ellas, buscando evitar así la multicolinealidad.")
+                    "Por último, de las columnas resultantes se comprueba si alguna está fuertemente relacionada con otra mediante la prueba V de Cramer. Si fuese el caso se procede a eliminar una de ellas, buscando evitar así la multicolinealidad.")
       
     HTML(paste0(
       "<p> <strong>", texto_principal, "</strong> </p>",
@@ -780,57 +795,7 @@ server <- function(input, output, session) {
   })
   
   
-  
-  #### Análisis de expresión diferencial (server) ####
-  
-  resultados_dea <- eventReactive(input$analisis_dea, {
-    validate(
-      need(input$preprocesado_mirnas, "⚠️ Debe ejecutar primero el preprocesado de los microARN. Una vez lo haga vuelva a ejecutar el análisis.")
-    )
-    analisis_expr_dif(
-      muestras_escogidas = input$muestras,
-      df = df_resultado_pre_mirnas()
-    )
-  })
-  
-  grafica_dea <- eventReactive(input$analisis_dea, {
-    volcano(
-      tabla_resultados = resultados_dea(), 
-      muestras_escogidas = input$muestras,
-      umbral_logFC = input$logFC, 
-      umbral_pvalor_ajustado = input$p_valor_adj
-    )
-  })
-  
-  output$volcano_plot <- renderPlot({
-    req(input$analisis_dea)
-    grafica_dea()
-  })
-  
-  resultados_dea_tras_filtro <- eventReactive(input$analisis_dea, {
-    validate(
-      need(input$preprocesado_mirnas, "⚠️ Debe ejecutar primero el preprocesado de los microARN. Una vez lo haga vuelva a ejecutar el análisis.")
-    )
-    mirnas_que_cumplen_ambos_filtros(
-      resultado = resultados_dea(),
-      umbral_logFC = input$logFC, 
-      umbral_pvalor_ajustado = input$p_valor_adj
-    )
-  })
-  
-  output$mirnas_filtrados <- DT::renderDataTable({
-    req(input$analisis_dea)
-    resultados_dea_tras_filtro()
-  }, options = list(
-      pageLength = 10,        # número de filas visibles
-      scrollY = "400px",      # altura fija
-      scrollCollapse = TRUE,  # que no genere espacio extra si hay pocas filas
-      scrollX = TRUE          # scroll horizontal
-  ))
-  
-  
-  
-  #### Análisis de supervivencia (server) ####
+  #### Combinación de datos clínicos y de expresiones ####
   
   df_conjunto <- reactive({
     req(input$preprocesado_mirnas)
@@ -861,6 +826,66 @@ server <- function(input, output, session) {
       df_resultado_pre_mirnas()
     )[[2]]
   })
+  
+  
+  #### Análisis de expresión diferencial (server) ####
+  
+  resultados_dea <- eventReactive(input$analisis_dea, {
+    validate(
+      need(input$preprocesado_mirnas, "⚠️ Debe ejecutar primero el preprocesado de los microARN. Una vez lo haga vuelva a ejecutar el análisis.")
+    )
+    validate(
+      need(input$preprocesado_clinico, "⚠️ Debe ejecutar primero el preprocesado clínico. Una vez lo haga vuelva a ejecutar el análisis.")
+    )
+    analisis_expr_dif(
+      muestras_escogidas = input$muestras,
+      comparacion = input$comparacion,
+      df = df_resultado_pre_mirnas(),
+      df_completo = df_conjunto()
+    )
+  })
+  
+  grafica_dea <- eventReactive(input$analisis_dea, {
+    volcano(
+      tabla_resultados = resultados_dea(),
+      umbral_logFC = input$logFC, 
+      umbral_pvalor_ajustado = input$p_valor_adj
+    )
+  })
+  
+  output$volcano_plot <- renderPlot({
+    req(input$analisis_dea)
+    grafica_dea()
+  })
+  
+  resultados_dea_tras_filtro <- eventReactive(input$analisis_dea, {
+    validate(
+      need(input$preprocesado_mirnas, "⚠️ Debe ejecutar primero el preprocesado de los microARN. Una vez lo haga vuelva a ejecutar el análisis.")
+    )
+    validate(
+      need(input$preprocesado_clinico, "⚠️ Debe ejecutar primero el preprocesado clínico. Una vez lo haga vuelva a ejecutar el análisis.")
+    )
+    mirnas_que_cumplen_ambos_filtros(
+      resultado = resultados_dea(),
+      umbral_logFC = input$logFC, 
+      umbral_pvalor_ajustado = input$p_valor_adj
+    )
+  })
+  
+  output$mirnas_filtrados <- DT::renderDataTable({
+    req(input$analisis_dea)
+    resultados_dea_tras_filtro()
+  }, options = list(
+      pageLength = 10,        # número de filas visibles
+      scrollY = "400px",      # altura fija
+      scrollCollapse = TRUE,  # que no genere espacio extra si hay pocas filas
+      scrollX = TRUE          # scroll horizontal
+  ))
+  
+  
+  
+  #### Análisis de supervivencia (server) ####
+  
   
   resultados_cox <- eventReactive(input$analisis_cox, {
     validate(
@@ -943,9 +968,9 @@ server <- function(input, output, session) {
     validate(
       need(input$analisis_cox, "⚠️ Debe ejecutar primero el análisis de supervivencia. Una vez lo haga vuelva a ejecutar este análisis.")
     )
-    if(input$mirna_genes == "microARNs tras Análisis de supervivencia"){
+    if(input$mirna_genes == "Los resultantes tras Análisis de supervivencia"){
       resultados_cox()
-    }else if(input$mirna_genes == "microARNs tras Expresión diferencial"){
+    }else if(input$mirna_genes == "Los resultantes tras Expresión diferencial"){
       rownames(resultados_dea_tras_filtro())
     }else if(input$mirna_genes == "La unión de ambos"){
       union(resultados_cox(), rownames(resultados_dea_tras_filtro()))
@@ -1029,6 +1054,16 @@ server <- function(input, output, session) {
     grafico_a_mostrar("heatmap")
   })
   
+  union_mirnas <- reactive({
+    validate(
+      need(input$analisis_dea, "⚠️ Debe ejecutar primero el análisis de Expresión diferencial. Una vez lo haga vuelva a ejecutar este análisis.")
+    )
+    validate(
+      need(input$analisis_cox, "⚠️ Debe ejecutar primero el análisis de supervivencia. Una vez lo haga vuelva a ejecutar este análisis.")
+    )
+    union(resultados_cox(), rownames(resultados_dea_tras_filtro()))
+  })
+  
   resultado_dendrograma <- eventReactive(input$dendrograma, {
     validate(
       need(input$preprocesado_mirnas, "⚠️ Debe ejecutar primero el preprocesado de los microARN. Una vez lo haga vuelva a ejecutar el análisis.")
@@ -1039,6 +1074,8 @@ server <- function(input, output, session) {
     clustering_dendrograma(
       df_mirnas = df_resultado_pre_mirnas_filtrado(),
       df_completo = df_conjunto(),
+      tipo = input$mirnas_escogidos,
+      dea_y_cox = union_mirnas(),
       N = input$num_mirnas,
       metodo_jerarquico = input$jerarquia
     )
@@ -1071,7 +1108,7 @@ server <- function(input, output, session) {
   
   output$parametro_clinicos_cluster <- renderUI({
     fluidRow(
-      column(4, 
+      column(3, 
              div(class = "center-col",
                  selectInput(
                    inputId = "num_cluster_selecc",
@@ -1081,16 +1118,25 @@ server <- function(input, output, session) {
                  )
              )
       ),
-      column(4,
+      column(3,
              div(class = "center-col",
-                 numericInput(
-                   inputId = "limite_selecc",
-                   label = "Establezca el límite de muestras sobre-expresadas a visualizar",
-                   value = 10, min = 1, max = 50, step = 1
+                 radioButtons(
+                   inputId = "tipo_regulated",
+                   label = "Indique con qué tipo de microARNs del clúster escogido le gustaría quedarse",
+                   choices = list("up-regulated (color rojo)", "down-regulated (color azul)")
                  )
              )
       ),
-      column(4, 
+      column(3,
+             div(class = "center-col",
+                 numericInput(
+                   inputId = "limite_selecc",
+                   label = "Establezca el número de muestras donde los microARN del clúster escogido se encuentran diferencialmente expresados según el criterio de la izquierda",
+                   value = 5, min = 1, max = 50, step = 1
+                 )
+             )
+      ),
+      column(3, 
              div(class = "center-col",
                  selectInput(
                    inputId = "columna_selecc",
@@ -1108,14 +1154,12 @@ server <- function(input, output, session) {
         width = 12, side = "left",
         tabPanel(
           "Tabla microARNs",
-          uiOutput("texto_tabla_mirnas_cluster"),
           div(style = "margin-top: 30px;",
               DT::dataTableOutput("mirnas_cluster")
           )
         ),
         tabPanel(
           "Tabla variables clínicas",
-          uiOutput("texto_tabla_variables_clinicas_cluster"),
           div(style = "margin-top: 30px;",
               DT::dataTableOutput("variables_clinicas_cluster")
           )
@@ -1128,20 +1172,12 @@ server <- function(input, output, session) {
     )
   })
   
-  
-  output$texto_tabla_variables_clinicas_cluster <- renderUI(
-    HTML("<strong> Aquí aparecen las expresiones de los microARNs del clúster para aquellos pacientes o muestras donde éstos (los microARNs) están más sobre-expresados </strong>")
-  )
-  
-  output$texto_tabla_variables_clinicas_cluster <- renderUI(
-    HTML("<strong> Aquí aparecen las variables clínicas de los pacientes o muestras donde los microARNs del clúster seleccionado están más sobre-expresados </strong>")
-  )
-  
   tabla_mirnas_cluster <- reactive({
     tabla_de_datos_por_cada_cluster(
       df_mirnas = df_resultado_pre_mirnas_filtrado(),
       agrupamiento_mirnas = resultado_heatmap(),
       cluster = input$num_cluster_selecc,
+      tipo = input$tipo_regulated,
       limite = input$limite_selecc,
       clinical_df = df_resultado_pre_clinico(),
       df_completo = df_conjunto()
@@ -1154,6 +1190,7 @@ server <- function(input, output, session) {
       agrupamiento_mirnas = resultado_heatmap(),
       cluster = input$num_cluster_selecc,
       limite = input$limite_selecc,
+      tipo = input$tipo_regulated,
       clinical_df = df_resultado_pre_clinico(),
       df_completo = df_conjunto()
     )[[2]]
@@ -1165,6 +1202,7 @@ server <- function(input, output, session) {
       agrupamiento_mirnas = resultado_heatmap(),
       cluster = input$num_cluster_selecc,
       limite = input$limite_selecc,
+      tipo = input$tipo_regulated,
       clinical_df = df_resultado_pre_clinico(),
       df_completo = df_conjunto()
     )[[3]]
@@ -1212,12 +1250,25 @@ server <- function(input, output, session) {
     input$modelo_a_usar
   })
   
+  df_a_usar <- eventReactive(input$ejecucion_tidyverse, {
+    df_escogido(
+      datos_a_usar = input$conjunto_datos_a_usar,
+      df_clinico = df_resultado_pre_clinico(),
+      df_completo = df_conjunto(),
+      mirnas_dea = rownames(resultados_dea_tras_filtro()),
+      mirnas_cox = resultados_cox()
+    )
+  })
+  
   lista_elementos <- reactive({
     validate(
-      need(input$preprocesado_clinico, "⚠️ Debe ejecutar primero el preprocesado clínico. Una vez lo haga vuelva a ejecutar el modelado.")
+      need(input$analisis_dea, "⚠️ Debe ejecutar primero el análisis de Expresión diferencial. Una vez lo haga vuelva a ejecutar este análisis.")
+    )
+    validate(
+      need(input$analisis_cox, "⚠️ Debe ejecutar primero el análisis de supervivencia. Una vez lo haga vuelva a ejecutar este análisis.")
     )
     pipeline_tidyverse_1(
-      df = df_resultado_pre_clinico(),
+      df = df_a_usar(),
       p = input$proporcion,
       folds = input$particiones,
       modelo_a_ejecutar = input$modelo_a_usar
@@ -1226,19 +1277,24 @@ server <- function(input, output, session) {
   
   resultado_final <- eventReactive(input$ejecucion_tidyverse, {
     validate(
-      need(input$preprocesado_clinico, "⚠️ Debe ejecutar primero el preprocesado clínico. Una vez lo haga vuelva a ejecutar el modelado.")
+      need(input$analisis_dea, "⚠️ Debe ejecutar primero el análisis de Expresión diferencial. Una vez lo haga vuelva a ejecutar este análisis.")
+    )
+    validate(
+      need(input$analisis_cox, "⚠️ Debe ejecutar primero el análisis de supervivencia. Una vez lo haga vuelva a ejecutar este análisis.")
     )
     pipeline_tidyverse_2(
       model_results_after_tuning = lista_elementos()[[1]],
       model_tune_wf = lista_elementos()[[2]], 
-      data_split = lista_elementos()[[3]],
-      metrica_a_seguir = input$metrica_a_usar
+      data_split = lista_elementos()[[3]]
     )
   })
   
   observeEvent(input$ejecucion_tidyverse, {
     validate(
-      need(input$preprocesado_clinico, "⚠️ Debe ejecutar primero el preprocesado clínico. Una vez lo haga vuelva a ejecutar el modelado.")
+      need(input$analisis_dea, "⚠️ Debe ejecutar primero el análisis de Expresión diferencial. Una vez lo haga vuelva a ejecutar este análisis.")
+    )
+    validate(
+      need(input$analisis_cox, "⚠️ Debe ejecutar primero el análisis de supervivencia. Una vez lo haga vuelva a ejecutar este análisis.")
     )
     
     sendSweetAlert(

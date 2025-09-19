@@ -1,4 +1,21 @@
 
+
+df_escogido <- function(datos_a_usar, df_clinico, df_completo, mirnas_dea, mirnas_cox){
+  if(datos_a_usar == "Variables clínicas"){
+    return(df_clinico)
+    
+  }else if(datos_a_usar == "Variables clínicas + microARN tras Expresión Diferencial"){
+    return(df_completo[,union(colnames(df_clinico), mirnas_dea)])
+    
+  }else if(datos_a_usar == "Variables clínicas + microARN tras Supervivencia"){
+    return(df_completo[,union(colnames(df_clinico), mirnas_cox)])
+    
+  }else if(datos_a_usar == "Variables clínicas + microARN tras Expresión Diferencial y Supervivencia"){
+    return(df_completo[,union(colnames(df_clinico), union(mirnas_dea, mirnas_cox))])
+    
+  }
+}
+
 pipeline_tidyverse_1 <- function(df, p, folds, modelo_a_ejecutar){
   
   set.seed(123)
@@ -44,19 +61,14 @@ pipeline_tidyverse_1 <- function(df, p, folds, modelo_a_ejecutar){
              "SVM (Support Vector Machines)" = svm_rbf(
                cost = tune(), 
                rbf_sigma = tune()
-              ),
-             "Naive Bayes" = naive_Bayes(
-               smoothness = tune(),
-               Laplace = tune()
-             )
+              )
           )
          
   motor <- switch(modelo_a_ejecutar, 
                   "Random Forest" = "ranger",
                   "Gradient Boosting" = "xgboost",
                   "Regresión logística" = "glmnet",
-                  "SVM (Support Vector Machines)" = "kernlab",
-                  "Naive Bayes" = "klaR"
+                  "SVM (Support Vector Machines)" = "kernlab"
           )
   
   modelo_escogido <- modelo %>%
@@ -84,19 +96,19 @@ pipeline_tidyverse_1 <- function(df, p, folds, modelo_a_ejecutar){
   return(list(model_results_after_tuning, model_tune_wf, data_split))
 }
 
-pipeline_tidyverse_2 <- function(model_results_after_tuning, model_tune_wf, data_split, metrica_a_seguir){
+pipeline_tidyverse_2 <- function(model_results_after_tuning, model_tune_wf, data_split){
   
   set.seed(123)
   # Especificación de la mejor métrica a seguir:
-  metrica_escogida <- switch(metrica_a_seguir, 
-                             "Accuracy" = "accuracy",
-                             "Área bajo la curva ROC" = "roc_auc",
-                             "Puntuación Brier" = "brier_class")
+  # metrica_escogida <- switch(metrica_a_seguir, 
+  #                            "Accuracy" = "accuracy",
+  #                            "Área bajo la curva ROC" = "roc_auc",
+  #                            "Puntuación Brier" = "brier_class")
   
   # Seleccionamos la mejor según la métrica
   data_best <-
     model_results_after_tuning %>% 
-    select_best(metric = metrica_escogida)
+    select_best(metric = "accuracy")
   
   # Creamos el workflow final
   data_wf_definitivo <- 
@@ -163,8 +175,8 @@ pipeline_tidyverse_2 <- function(model_results_after_tuning, model_tune_wf, data
     labs(
       title = "Matriz de confusión",
       subtitle = "Clasificación de vital_status",
-      x = "Predicción",
-      y = "Valor real"
+      x = "Valor real",
+      y = "Predicción"
     ) +
     theme_minimal(base_size = 17) +
     theme(

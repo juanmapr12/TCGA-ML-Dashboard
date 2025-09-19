@@ -1,6 +1,6 @@
 
 lista_columnas_numericas <- c("age",
-                               "time")
+                              "time")
 
 lista_columnas_categoricas_nominales <- c("ethnicity",
                                            "gender",
@@ -19,9 +19,7 @@ lista_columnas_categoricas_ordinales <-
     "tumor_event_after_treatment_no",
     "tumor_event_after_treatment_yes",
     "additional_pharmaceutical_therapy_yes",
-    "additional_pharmaceutical_therapy_no",
-    "additional_radiation_therapy_yes",
-    "additional_radiation_therapy_no")
+    "additional_radiation_therapy_yes")
 
 
 lista_columnas_categoricas <- c(lista_columnas_categoricas_nominales,
@@ -141,14 +139,14 @@ preprocesado_clinico <- function(df){
       p_valor_medias <- 0  # Inicializo
       p_valor_varianza <- var.test(resultado$muestra_alive, resultado$muestra_dead)
       if(p_valor_varianza < 0.05){
-        # CASO 1: Las varianzas son iguales
+        # CASO 1: Las varianzas son iguales -> Prueba t de Student
         p_valor_medias <- t.test(resultado$muestra_alive, resultado$muestra_dead, 
                                  alternative = "two.sided",
                                  mu          = 0,
                                  var.equal   = TRUE,
                                  conf.level  = 0.95)$p.value
       }else{
-        # CASO 2: Las varianzas no son iguales
+        # CASO 2: Las varianzas no son iguales -> Prueba t de Welch
         p_valor_medias <- t.test(resultado$muestra_alive, resultado$muestra_dead, 
                                  alternative = "two.sided",
                                  mu          = 0,
@@ -160,7 +158,9 @@ preprocesado_clinico <- function(df){
       }
     }else{
       # Prueba U de Mann-Whitney
-      p_valor <- wilcox.test(resultado$muestra_alive, resultado$muestra_dead, paired = FALSE)$p.value
+      p_valor <- wilcox.test(resultado$muestra_alive, 
+                             resultado$muestra_dead, 
+                             paired = FALSE)$p.value
       if(p_valor < 0.05){
         lista <- list(nombre_var)
       }
@@ -182,7 +182,8 @@ preprocesado_clinico <- function(df){
     df <- data.frame(vital_status, variable)
     tabla <- table(df$vital_status, df$variable)
     # Aplicamos test Chi-cuadrado considerando las condiciones de Cochran
-    chi = chisq.test(tabla)
+    chi <- chisq.test(tabla)
+    v <- assocstats(tabla)$cramer
     condicion1 <- mean(chi$expected < 5) <= 0.20
     condicion2 <- all(chi$expected >= 1)
     if(condicion1 & condicion2){
@@ -190,8 +191,9 @@ preprocesado_clinico <- function(df){
         lista <- list(nombre_var)
       }
     }else{
-      v <- assocstats(tabla)$cramer
-      if (v >= 0.5) {
+      # Si no, recurrimos al test chi cuadrado mediante simulación de Monte Carlo
+      chi_simulado <- chisq.test(tabla, simulate.p.value = TRUE, B = 10000)
+      if(chi_simulado$p.value < 0.05){
         lista <- list(nombre_var)
       }
     }
@@ -229,8 +231,8 @@ preprocesado_clinico <- function(df){
     for(i in 1:(length(lista_pares_variables)/2)){
       var1 <- lista_pares_variables[,i][[1]]
       var2 <- lista_pares_variables[,i][[2]]
-      res <- assocstats(table(get(var1), get(var2)))$cramer
-      if(!is.nan(res) & res >= 0.5){
+      v <- assocstats(table(get(var1), get(var2)))$cramer
+      if(!is.nan(v) & v >= 0.5){
         lista <- append(lista, var1)
       }
     }
